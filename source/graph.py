@@ -1,4 +1,5 @@
 import networkx as nx
+import matplotlib as mpl
 from source.transport import *
 import matplotlib.pyplot as plt
 
@@ -45,16 +46,22 @@ class Map:
         """
         self.A = X1
         self.B = X2
-        if self.B is None:
-            #Assume graph is symmetric if only one sample is recieved
-            self.B = X1
-            symmetric = True
+
 
 
         self.transport_map = transport_map
         self.symmetric = symmetric
+        self.group_graph = None
 
-        #Make groups
+        if self.B is None:
+            # Assume graph is symmetric if only one sample is recieved
+            self.B = X1
+            symmetric = True
+
+        if self.B is not None:
+            symmetric = False
+
+            #Make groups
         self.groups = []
 
 
@@ -68,7 +75,7 @@ class Map:
         element.  The edge weights denote the mass of transport  
         """
         #Make graph
-        # A_nodes = [("A%d" % i, {"feature": self.A[i]}) for i in range(len(self.A))]
+        A_nodes = [("A%d" % i, {"feature": self.A[i]}) for i in range(len(self.A))]
 
         if symmetric:
             #Quick check that the samples are the same size, if they're symetric
@@ -171,8 +178,98 @@ class Map:
         for u, v, weight in group_edges:
             group_graph.add_edge(u, v, weight=weight)
 
+        self.group_graph = group_graph
         return group_graph
 
+
+    def show_graph(self,
+                   grouped=False,
+                   sizeNodesBy=None,
+                   numNodeSizes=3,
+                   nodeSizeConstanst=50,
+                   nodeSizeSmallest=1000,
+                   nodeColorRule=None,
+                   nodeSizeRule=None,
+                   numNodeColors=2,
+                   edgeColorRule=None,
+                   ):
+
+        if grouped:
+            assert self.group_graph is not None, "Must have a group graph!"
+            G = self.group_graph
+        else:
+            G = self.graph
+
+        pos = nx.layout.spring_layout(G)
+
+        nodes = G.nodes(data=True)
+        if sizeNodesBy is not None:
+            nodes = sizeNodesBy(nodes)
+
+        node_colors_ = []
+        color_marker = 0
+
+        node_sizes = []
+        size_marker = 0
+
+        if self.symmetric:
+
+            for i in range(len(nodes)):
+                if i >= len(nodes)*(size_marker + 1)/(numNodeSizes):
+                    size_marker += 1
+                node_sizes.append(nodeSizeSmallest + ((size_marker + 1) * nodeSizeConstanst))
+                if nodeColorRule is None:
+                    if i >= len(nodes)*(color_marker + 1)/(numNodeColors):
+                        color_marker += 1
+                    node_colors_.append((color_marker + 1) / (numNodeColors))
+                else:
+                    node_colors_.append(nodeColorRule(nodes[i]))
+
+        #Not symmetric case
+        else:
+
+            if nodeColorRule is not None:
+                node_colors_ = [nodeColorRule(nodes[i]) for i in range(len(nodes))]
+            else:
+                node_colors_ = [1] * len(nodes)
+            if nodeSizeRule is None:
+                node_sizes = [nodeSizeSmallest] * len(nodes)
+            else:
+                node_sizes = [nodeSizeRule(nodes[i]) for i in range(len(nodes))]
+
+
+
+        M = G.number_of_edges()
+        edge_cmap = plt.get_cmap("Greys", lut=len(G.edges))
+        edge_colors = [edge_cmap(d[-1]) for d in G.edges.data("weight")]
+
+        node_cmap = plt.get_cmap(name='viridis', lut=len(G))
+        node_colors = [node_cmap(c) for c in node_colors_]
+
+        nx.draw(
+            G,
+            pos=pos,
+            with_labels=True,
+            node_size = node_sizes,
+            node_color = node_colors
+        )
+
+        nx.draw_networkx_edges(
+            G,
+            pos,
+            node_size=node_sizes,
+            arrowstyle="->",
+            arrowsize=10,
+            edge_color=edge_colors,
+            edge_cmap=plt.cm.Blues,
+            width=2,
+        )
+
+        ax = plt.gca()
+        ax.set_axis_off()
+        plt.show()
+
+        #TODO: Draw group graph with labels
 
 
 
