@@ -1,7 +1,13 @@
 import networkx as nx
 import matplotlib as mpl
-from source.transport import *
+from transport import *
+from PIL import Image
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import normalize
+
+def normalize_unit(data):
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
+
 
 def adjMatrixEdges(M, a_nodes, b_nodes=None):
     """
@@ -52,13 +58,13 @@ class Map:
         self.transport_map = transport_map
         self.symmetric = symmetric
         self.group_graph = None
+        self.normalized = True
 
         if self.B is None:
             # Assume graph is symmetric if only one sample is recieved
-            self.B = X1
+            # self.B = X1
             symmetric = True
-
-        if self.B is not None:
+        else:
             symmetric = False
 
             #Make groups
@@ -78,8 +84,9 @@ class Map:
         A_nodes = [("A%d" % i, {"feature": self.A[i]}) for i in range(len(self.A))]
 
         if symmetric:
+
             #Quick check that the samples are the same size, if they're symetric
-            assert len(self.A) == len(self.B), "samples must be of the same length"
+            # assert len(self.A) == len(self.B), "samples must be of the same length"
 
             #Add to graph
             # self.graph.add_nodes_from(A_nodes)
@@ -104,7 +111,7 @@ class Map:
             # Add Edges to graph
             self.graph.add_weighted_edges_from(edges)
 
-    def add_group(self, rule):
+    def add_group(self, rule, name=None):
 
         #Get nodes as tuple (name, data_dict)
         nodes = self.graph.nodes(data=True)
@@ -115,7 +122,10 @@ class Map:
 
         #Add to the big list of groups
         if grouped not in self.groups:
-            self.groups.append(grouped)
+            self.groups.append((name, grouped))
+
+        if len(self.groups) >= 2:
+            self.create_grouped_graph()
 
 
     def create_grouped_graph(self):
@@ -131,7 +141,10 @@ class Map:
 
         #Add a node for each group
         for i in range(num_groups):
-            group_graph.add_node("G%d" % i, nodes=groups[i])
+            group_name, group_nodes = groups[i]
+            if group_name is None:
+                group_name = "G%d" % i
+            group_graph.add_node(group_name, nodes=group_nodes)
 
         #Compute edge weights in adjacency matrix
         group_adjacency_matrix = np.zeros((num_groups, num_groups))
@@ -142,7 +155,7 @@ class Map:
             #Get the indices of a match
             if side == 'A':
                 #Get all the groups that the node is in
-                node_groups = [i for i in range(len(groups)) if node in groups[i]]
+                node_groups = [i for i in range(len(groups)) if node in groups[i][1]]
 
                 #Get all the nodes that it is matched to
                 match_indices = get_matches(index, mapping=M)
@@ -166,10 +179,12 @@ class Map:
                 # match_indices[0] because its a tuple for some reason? the indices are in the 0 spot
                 for m_i in match_indices[0]:
 
-                    match_groups_indices = [i for i in range(len(groups)) if "%s%d" % (match_side, m_i) in groups[i]]
+                    match_groups_indices = [i for i in range(len(groups)) if "%s%d" % (match_side, m_i) in groups[i][1]]
                     for m_g_i in match_groups_indices:
                         for n_g in node_groups:
                             group_adjacency_matrix[n_g][m_g_i] += M[index][m_i]
+
+        self.group_adj = group_adjacency_matrix
 
         #Get the edges for the group graph
         group_edges = adjMatrixEdges(group_adjacency_matrix, list(group_graph.nodes))
@@ -179,7 +194,27 @@ class Map:
             group_graph.add_edge(u, v, weight=weight)
 
         self.group_graph = group_graph
+
+        if self.group_graph is not None and self.group_adj is not None and self.normalized:
+            self.normalize_weights()
+
         return group_graph
+
+    def resetGroupEdges(self):
+        assert self.group_graph is not None and self.group_adj is not None, "Group Graph not instantiated"
+        self.group_graph = nx.create_empty_copy(self.group_graph, with_data=True)
+        group_edges = adjMatrixEdges(self.group_adj, list(self.group_graph.nodes))
+        for u, v, weight in group_edges:
+            self.group_graph.add_edge(u, v, weight=weight)
+
+
+    def normalize_weights(self):
+        if self.group_graph is not None:
+            self.group_adj = normalize(self.group_adj, axis=1, norm="l1")
+
+        self.resetGroupEdges()
+
+        return self.group_adj
 
 
     def show_graph(self,
@@ -200,74 +235,110 @@ class Map:
         else:
             G = self.graph
 
-        pos = nx.layout.spring_layout(G)
+        for u, v, d in G.edges(data=True):
+            d['label'] = "%.3f" % d.get('weight', '')
+            d['arrowsize'] = .6
 
-        nodes = G.nodes(data=True)
-        if sizeNodesBy is not None:
-            nodes = sizeNodesBy(nodes)
+        if grouped:
+            for name, feature in G.nodes(data=True):
+                lol = 2
+                G.nodes[name]['height'] = lol
+                G.nodes[name]['width'] = lol
 
-        node_colors_ = []
-        color_marker = 0
-
-        node_sizes = []
-        size_marker = 0
-
-        if self.symmetric:
-
-            for i in range(len(nodes)):
-                if i >= len(nodes)*(size_marker + 1)/(numNodeSizes):
-                    size_marker += 1
-                node_sizes.append(nodeSizeSmallest + ((size_marker + 1) * nodeSizeConstanst))
-                if nodeColorRule is None:
-                    if i >= len(nodes)*(color_marker + 1)/(numNodeColors):
-                        color_marker += 1
-                    node_colors_.append((color_marker + 1) / (numNodeColors))
-                else:
-                    node_colors_.append(nodeColorRule(nodes[i]))
-
-        #Not symmetric case
-        else:
-
-            if nodeColorRule is not None:
-                node_colors_ = [nodeColorRule(nodes[i]) for i in range(len(nodes))]
-            else:
-                node_colors_ = [1] * len(nodes)
-            if nodeSizeRule is None:
-                node_sizes = [nodeSizeSmallest] * len(nodes)
-            else:
-                node_sizes = [nodeSizeRule(nodes[i]) for i in range(len(nodes))]
+        if grouped:
+            G.graph['K'] = 3
 
 
+        A = nx.nx_agraph.to_agraph(G)
 
-        M = G.number_of_edges()
-        edge_cmap = plt.get_cmap("Greys", lut=len(G.edges))
-        edge_colors = [edge_cmap(d[-1]) for d in G.edges.data("weight")]
+        # A.layout(prog='dot')
+        A.layout(prog="fdp")
 
-        node_cmap = plt.get_cmap(name='viridis', lut=len(G))
-        node_colors = [node_cmap(c) for c in node_colors_]
+        A.draw("simple.png")
 
-        nx.draw(
-            G,
-            pos=pos,
-            with_labels=True,
-            node_size = node_sizes,
-            node_color = node_colors
-        )
+        img = Image.open("simple.png")
+        plt.figure(figsize=(10, 8))
 
-        nx.draw_networkx_edges(
-            G,
-            pos,
-            node_size=node_sizes,
-            arrowstyle="->",
-            arrowsize=10,
-            edge_color=edge_colors,
-            edge_cmap=plt.cm.Blues,
-            width=2,
-        )
-
-        ax = plt.gca()
-        ax.set_axis_off()
+        plt.imshow(img)
         plt.show()
+
+
+        # pos = nx.layout.spring_layout(G)
+        #
+        # nodes = G.nodes(data=True)
+        # if sizeNodesBy is not None:
+        #     nodes = sizeNodesBy(nodes)
+        #
+        # node_colors_ = []
+        # color_marker = 0
+        #
+        # labels = None
+        #
+        # node_sizes = []
+        # size_marker = 0
+        #
+        # if self.symmetric:
+        #
+        #     for i in range(len(nodes)):
+        #         if i >= len(nodes)*(size_marker + 1)/(numNodeSizes):
+        #             size_marker += 1
+        #         node_sizes.append(nodeSizeSmallest + ((size_marker + 1) * nodeSizeConstanst))
+        #         if nodeColorRule is None:
+        #             if i >= len(nodes)*(color_marker + 1)/(numNodeColors):
+        #                 color_marker += 1
+        #             node_colors_.append((color_marker + 1) / (numNodeColors))
+        #         else:
+        #             node_colors_.append(nodeColorRule(nodes[i]))
+        #
+        # #Not symmetric case
+        # else:
+        #
+        #     if nodeColorRule is not None:
+        #         node_colors_ = [nodeColorRule(nodes[i]) for i in range(len(nodes))]
+        #     else:
+        #         node_colors_ = [1] * len(nodes)
+        #     if nodeSizeRule is None:
+        #         node_sizes = [nodeSizeSmallest] * len(nodes)
+        #     else:
+        #         node_sizes = [nodeSizeRule(nodes[i]) for i in range(len(nodes))]
+        #
+        #
+        #
+        # M = G.number_of_edges()
+        # edge_cmap = plt.get_cmap("Greys", lut=M)
+        # edge_weights = np.array([(e[-1] + .5)/.6 for e in G.edges.data("weight")])
+        # edge_colors = [edge_cmap(e_n) for e_n in edge_weights]
+        #
+        # node_cmap = plt.get_cmap(name='viridis', lut=len(G))
+        # node_colors = [node_cmap(c) for c in node_colors_]
+        #
+        # nx.draw(
+        #     G,
+        #     pos=pos,
+        #     with_labels=True,
+        #     node_size = node_sizes,
+        #     node_color = node_colors,
+        #     alpha=.4
+        # )
+        #
+        #
+        # nx.draw_networkx_edges(
+        #     G,
+        #     pos,
+        #     node_size=node_sizes,
+        #     arrowstyle="->",
+        #     arrowsize=10,
+        #     edge_color=edge_colors,
+        #     edge_cmap=plt.cm.Blues,
+        #     width=2,
+        # )
+        #
+        # labels = nx.get_edge_attributes(G, 'weight')
+        # nx.draw_networkx_edge_labels(G, pos, edge_labels=labels)
+        #
+        # ax = plt.gca()
+        # ax.set_axis_off()
+        # plt.show()
 
         #TODO: Draw group graph with labels
 
