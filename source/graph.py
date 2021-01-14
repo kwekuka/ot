@@ -257,7 +257,7 @@ class Map:
         A.draw("simple.png")
 
         img = Image.open("simple.png")
-        #plt.figure(figsize=(12, 10))
+        plt.figure(figsize=(12, 10))
 
         plt.imshow(img)
         plt.show()
