@@ -1,4 +1,3 @@
-
 import numpy as np
 import pandas as pd
 from responsibly.dataset import COMPASDataset
@@ -116,7 +115,6 @@ def germanDataset():
 
 def one_hot(df, column, drop=True):
     """
-
     :param df: the dataframe we're manipulating (pandas)
     :param column: the name of the column we wanna 1-hot (string)
     :param drop: drop the column we encoded in the return df (bool)
@@ -134,16 +132,6 @@ def one_hot(df, column, drop=True):
         df = df.drop([column], axis=1)
     return df
 
-
-
-# print transformations
-for x in range(len(catvars)):
-    print(catvars[x],": ", data[catvars[x]].unique())
-    print(catvars[x],": ", lecatdata[catvars[x]].unique())
-
-#One hot encoding, create dummy variables for every category of every categorical variable
-dummyvars = pd.get_dummies(data[catvars])
-    return  cdf
 
 #TODO: Is this what i want? not sure
 # def write_compas():
