@@ -60,35 +60,6 @@ def compas():
                     "days_b_screening_arrest"], axis=1)
     return cdf
 
-
-def germanDataset():
-    german_ds = GermanDataset()
-    # Make the dataframe
-    cdf = german_ds.df
-
-    # Rename the columns of status and sex as they seem to be swapped
-    cdf = cdf.rename(columns = {'sex': 'marital_status', 'status': 'sex'}, inplace = False)
-
-    # Encode credit classification
-    cdf = cdf.replace({'credit': {'good': 0, 'bad': 1}})
-
-    # Encode Male Female 
-    cdf = cdf.replace({'sex': {'male': 0, 'female': 1}})
-
-    # deal with numerical values 
-    numvars = ['credit_amount', 'duration', 'installment_rate', 'present_residence_since', 'age', 
-               'number_of_existing_credits', 'number_of_people_liable_for']
-    # Standardization
-    cdf[numvars] = pd.DataFrame(StandardScaler().fit_transform(cdf[numvars]))    
-
-    # deal with categorical values by one hot encoding
-    catvars = ['number_of_existing_credits', 'credit_history', 'purpose', 'savings', 
-               'present_employment','marital_status', 'other_debtors', 'property', 
-               'installment_plans', 'housing', 'job', 'telephone', 'foreign_worker']
-    for x in catvars:
-        cdf = one_hot(cdf, x)
-    return cdf
-
 def germanDataset():
     # import data
     german_ds = GermanDataset()
