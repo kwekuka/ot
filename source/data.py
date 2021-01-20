@@ -71,7 +71,7 @@ def germanDataset():
     cdf = cdf.rename(columns = {'sex': 'marital_status', 'status': 'sex'}, inplace = False)
 
     # Encode credit classification
-    cdf = cdf.replace({'credit': {'good': 0, 'bad': 1}})
+    cdf = cdf.replace({'credit': {'good': 1, 'bad': 0}})
 
     # Encode Male Female 
     cdf = cdf.replace({'sex': {'male': 0, 'female': 1}})
