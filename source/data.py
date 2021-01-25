@@ -1,7 +1,8 @@
-
 import numpy as np
 import pandas as pd
 from responsibly.dataset import COMPASDataset
+from responsibly.dataset import GermanDataset
+from sklearn.preprocessing import StandardScaler
 
 def compas():
     # Get the whole dataset, already nicely filtered for us from this library
@@ -59,9 +60,32 @@ def compas():
                     "days_b_screening_arrest"], axis=1)
     return cdf
 
+def germanDataset():
+    # import data
+    german_ds = GermanDataset()
+    
+    # Make the dataframe
+    cdf = german_ds.df
+
+    # Rename the columns of status and sex as they seem to be swapped
+    cdf = cdf.rename(columns = {'sex': 'marital_status', 'status': 'sex'}, inplace = False)
+
+    # Encode credit classification
+    cdf = cdf.replace({'credit': {'good': 1, 'bad': 0}})
+
+    # Encode Male Female 
+    cdf = cdf.replace({'sex': {'male': 0, 'female': 1}})
+
+    # deal with categorical values by one hot encoding
+    catvars = ['credit_history', 'purpose', 'savings', 
+               'present_employment','marital_status', 'other_debtors', 'property', 
+               'installment_plans', 'housing', 'job']
+    for x in catvars:
+        cdf = one_hot(cdf, x)
+    return cdf
+
 def one_hot(df, column, drop=True):
     """
-
     :param df: the dataframe we're manipulating (pandas)
     :param column: the name of the column we wanna 1-hot (string)
     :param drop: drop the column we encoded in the return df (bool)
@@ -78,6 +102,7 @@ def one_hot(df, column, drop=True):
     if drop:
         df = df.drop([column], axis=1)
     return df
+
 
 #TODO: Is this what i want? not sure
 # def write_compas():
