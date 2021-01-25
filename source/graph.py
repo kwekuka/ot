@@ -168,7 +168,7 @@ class Map:
 
                 """
                 Below we're making the adjacency matrix for the graph representation 
-                Its kinda so it gets a block comment 
+                Its kinda alot so it gets a block comment 
                 First we're going to iterate through all the indices that our 'node' (defined above) is matched to 
                 Then we get the groups for each of those matches - a match can be in multiple groups
                 
