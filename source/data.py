@@ -72,14 +72,12 @@ def germanDataset():
     cdf = cdf.replace({'credit': {'good': 1, 'bad': 0}})
     # Encode Male Female 
     cdf = cdf.replace({'sex': {'male': 0, 'female': 1}})
+    # redo age factor so it's not an interval
+    cdf = cdf.drop(["age_factor"], axis=1)  # remove age factor since age is also a variable
+    cdf['age_factor'] = cdf['age'] >= 25
     
     # remove the random columns that are duplicated
     cdf = cdf.loc[:,~cdf.columns.duplicated()]
-
-    # deal with standardizing numerical values (not one hot)
-    numvars = ['credit_amount', 'duration', 'installment_rate', 'present_residence_since',
-                   'number_of_existing_credits', 'number_of_people_liable_for']
-    cdf[numvars] = pd.DataFrame(StandardScaler().fit_transform(cdf[numvars]))  
     
     # deal with categorical values by one hot encoding
     catvars = ['credit_history', 'purpose', 'savings', 
@@ -88,6 +86,8 @@ def germanDataset():
     for x in catvars:
         cdf = one_hot(cdf, x)
         
+    cdf = cdf.rename(columns = {'none': 'no_guarantor_co-applicant', 'stores': 'store_installment', 
+                                'bank':'bank_installment'}, inplace = False)
     return cdf
 
 def one_hot(df, column, drop=True):
