@@ -145,25 +145,31 @@ def adultDataset():
 def germanDataset():
     # import data
     german_ds = GermanDataset()
-    
     # Make the dataframe
     cdf = german_ds.df
 
     # Rename the columns of status and sex as they seem to be swapped
     cdf = cdf.rename(columns = {'sex': 'marital_status', 'status': 'sex'}, inplace = False)
-
     # Encode credit classification
     cdf = cdf.replace({'credit': {'good': 1, 'bad': 0}})
-
     # Encode Male Female 
     cdf = cdf.replace({'sex': {'male': 0, 'female': 1}})
-
+    # redo age factor so it's not an interval
+    cdf = cdf.drop(["age_factor"], axis=1)  # remove age factor since age is also a variable
+    cdf['age_factor'] = cdf['age'] >= 25
+    
+    # remove the random columns that are duplicated
+    cdf = cdf.loc[:,~cdf.columns.duplicated()]
+    
     # deal with categorical values by one hot encoding
     catvars = ['credit_history', 'purpose', 'savings', 
                'present_employment','marital_status', 'other_debtors', 'property', 
                'installment_plans', 'housing', 'job']
     for x in catvars:
         cdf = one_hot(cdf, x)
+        
+    cdf = cdf.rename(columns = {'none': 'no_guarantor_co-applicant', 'stores': 'store_installment', 
+                                'bank':'bank_installment'}, inplace = False)
     return cdf
 
 def one_hot(df, column, drop=True):
