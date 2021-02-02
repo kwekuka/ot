@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from responsibly.dataset import COMPASDataset
 from responsibly.dataset import GermanDataset
+from responsibly.dataset import AdultDataset
 from sklearn.preprocessing import StandardScaler
 
 def compas():
@@ -59,6 +60,87 @@ def compas():
                     "v_decile_score", "c_days_from_compas", "start", "end", "event",
                     "days_b_screening_arrest"], axis=1)
     return cdf
+
+def adultDataset():
+    #Get the whole dataset, already nicely filtered for us from this library
+    adult_ds = AdultDataset()
+
+    #Make the dataframe
+    adf = adult_ds.df
+
+    #Make the occupations 1-hot
+    adf = one_hot(adf, "occupation", drop=True)
+
+
+    #Clean up Education
+    adf = adf.replace({'education': {
+        'Assoc-acdm': "HS-grad",
+        'Some-college': "HS-grad",
+        'Assoc-voc': "HS-grad",
+        "Prof-school": "HS-grad",
+        "11th": "No-HSD",
+        "9th": "No-HSD",
+        "10th": "No-HSD",
+        "12th": "No-HSD",
+        "5th-6th": "No-HSD",
+        "7th-8th": "No-HSD",
+        "1st-4th": "No-HSD",
+        "Preschool": "No-HSD"
+    }})
+
+    #Drop smaller racial categories for now
+    adf = adf[adf["race"] != "Amer-Indian-Eskimo"]
+    adf = adf[adf["race"] != "Asian-Pac-Islander"]
+    adf = adf[adf["race"] != "Other"]
+
+    #Only united states (~40k/48k)
+    # United States non US (~40k/48k)
+    adf.loc[adf['native_country'] != ' United-States', 'native_country'] = 'Non-US'
+    adf.loc[adf['native_country'] == ' United-States', 'native_country'] = 'US'
+    adf['native_country'] = adf['native_country'].map({'US': 1, 'Non-US': 0}).astype(int)
+    adf.head()
+
+
+    #mMake race and gender binary (yuck)
+    adf = adf.replace({'sex': {
+        'Female': 1,
+        'Male': 0,
+    }})
+
+    adf = adf.replace({'race': {
+        'Black': 1,
+        'White': 0,
+    }})
+
+    #Make all categorical 1-hot
+    adf = one_hot(adf, "education", drop=True)
+
+    #Simply work classes
+    adf['workclass'] = adf['workclass'].replace(['State-gov', 'Local-gov', 'Federal-gov'], 'Gov')
+    adf['workclass'] = adf['workclass'].replace(['Self-emp-inc', 'Self-emp-not-inc'], 'Self_employed')
+    adf = one_hot(adf, "workclass", drop=True)
+
+
+
+
+    #Make Marital status binary
+    adf['marital_status'] = adf['marital_status'].replace(['Divorced', 'Married-spouse-absent', 'Never-married', 'Separated', 'Widowed'], 'Single')
+    adf['marital_status'] = adf['marital_status'].replace(['Married-AF-spouse', 'Married-civ-spouse'], 'Couple')
+    adf = one_hot(adf, "marital_status", drop=True)
+
+    #Make relationships one-hot
+    adf = one_hot(adf, "relationship", drop=True)
+
+
+    #Make the income variables binary
+    adf = adf.replace({'income_per_year': {
+        '<=50K': 0,
+        '>50K': 1,
+    }})
+
+
+
+    return adf
 
 def germanDataset():
     # import data
