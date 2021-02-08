@@ -1,0 +1,24 @@
+,Change
+unemployed,-0.37633926306707394
+installment_rate,-0.5065366294756274
+no_guarantor_co-applicant,0.4232923653049519
+guarantor,0.25736892634817854
+co-applicant,-0.3136053957830234
+unknown/ no savings account,0.42596364712403256
+... < 100 DM,-0.6457835440743519
+500 <= ... < 1000 DM,0.24210904155046958
+.. >= 1000 DM,0.24372811812519665
+100 <= ... < 500 DM,0.13270260310644655
+critical account/ other credits existing (not at this bank),0.7163763619399546
+existing credits paid back duly till now,-0.08418528358202305
+delay in paying off in the past,-0.14831473075759063
+no credits taken/ all credits paid back duly,-0.5489052644892275
+all credits at this bank paid back duly,-0.6228517984398767
+number_of_existing_credits,0.02910932621927554
+number_of_people_liable_for,-0.2600619757853755
+real estate,0.38844505512917277
+building society savings agreement / life insurance,-0.0756505400630208
+unknown / no property,-0.3818135569588743
+car or other,-0.010706487539740094
+bank_installment,-0.3740802533305831
+store_installment,-0.1667657840787468

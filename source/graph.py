@@ -4,6 +4,9 @@ from transport import *
 from PIL import Image
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize
+import plotly.express as px
+import plotly.graph_objects as go
+import seaborn as sns 
 
 def normalize_unit(data):
     return (data - np.min(data)) / (np.max(data) - np.min(data))
@@ -262,7 +265,62 @@ class Map:
         plt.imshow(img)
         plt.show()
 
+    def adj_to_sankey_weighted(self, s, t):
+        source = []
+        target = []
+        value = [] 
+        for i in range(len(self.group_adj)): # fix a class in the source 
+            j = 0
+            num_t = np.round(self.group_adj[i][j]*s[i]) # count how many were mapped to this target in t
+            count_t = 0
 
+            for s_i in range(s[i]):
+                source.append(i) # add an invidivual in this group
+
+                target.append(j + len(self.group_adj[i]))
+                value.append(1)
+                count_t += 1
+
+                # move to the next group in the target if these are done
+                if count_t > num_t:
+                    count_t = 0
+                    j += 1
+
+                    num_t = np.round(self.group_adj[i][j]*s[i]) 
+
+
+        return source, target, value
+    
+    
+    def parallel_plot(self, s, t):
+        src, tar, val = self.adj_to_sankey_weighted(s, t)
+        groups = [gr[0] for gr in self.groups]
+
+        color_swatch = sns.color_palette("colorblind", as_cmap=True)
+        offset = 0
+        colors = [color_swatch[i+offset] for i in src]
+
+        fig = go.Figure(data=[go.Sankey(
+            arrangement = "snap",
+            node = dict(
+              pad = 15,
+              thickness = 20,
+              line = dict(color = "black", width = 1),
+              label = groups*2,
+              color = color_swatch[offset:len(groups)+offset]*2,
+            ),
+            link = dict(
+              source = src,
+              target = tar,
+              value = val,
+              color = colors[:len(val)]
+          ))]
+         )
+
+        fig.update_layout(font_size=14,  width = 500)
+        fig.show()    
+    
+    
         # pos = nx.layout.spring_layout(G)
         #
         # nodes = G.nodes(data=True)
