@@ -1,5 +1,6 @@
 import ot
 import numpy as np
+from scipy.spatial import distance_matrix
 
 def compute_map(A, B, metric="euclidean"):
     M = compute_dist(A,B)
@@ -54,4 +55,21 @@ def get_matches(index, mapping):
     return indices
 
 
+def unfairness_metric(T, X0, X1):
+    d = distance_matrix(X0,X1)
+    uf = np.sum( np.multiply(T, d), axis = 1) # element-wise mult + row sums
+    return uf
 
+def unfairness_metric_norm(T, X0, X1):
+    """
+
+    :param T: The Transport map/optimal coupling
+    :param X: Features 
+    :return:
+    """
+    d = distance_matrix(X0,X1)
+    max_distance = np.amax(d, axis = 1) # get max along rows
+    uf = np.sum( np.multiply(T, d), axis = 1) # element-wise mult + row sums
+    uf_norm = np.divide(uf, max_distance) * X0.shape[0] # normalize by worst possible case
+
+    return uf_norm
